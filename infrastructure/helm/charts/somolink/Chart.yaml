@@ -1,0 +1,19 @@
+apiVersion: v2
+name: somolink
+description: AI-powered, solar-driven digital learning infrastructure
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - somolink
+  - education
+  - solar
+  - ai
+  - connectivity
+home: https://github.com/wekkitech/somolink
+sources:
+  - https://github.com/wekkitech/somolink
+maintainers:
+  - name: Wekkitech Limited
+    email: dev@wekkitech.co.ke
+icon: https://wekkitech.co.ke/images/somolink-icon.png

@@ -1,0 +1,241 @@
+# Default values for somolink
+# This is a YAML-formatted file
+
+# Global settings
+global:
+  namespace: somolink
+  environment: production
+  imageRegistry: docker.io
+  imagePullSecrets: []
+
+# API Gateway
+apiGateway:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: somolink/api-gateway
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 3001
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  env:
+    NODE_ENV: production
+    PORT: "3001"
+
+# AI Platform
+aiPlatform:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: somolink/ai-platform
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8000
+  resources:
+    requests:
+      memory: "2Gi"
+      cpu: "1000m"
+    limits:
+      memory: "4Gi"
+      cpu: "2000m"
+  models:
+    persistentVolume:
+      enabled: true
+      size: 10Gi
+      storageClass: standard
+
+# Billing Service
+billing:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: somolink/billing
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 3003
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  mpesa:
+    enabled: true
+    environment: sandbox
+
+# Data Ingestion
+dataIngestion:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: somolink/data-ingestion
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8001
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+
+# School Dashboard
+schoolDashboard:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: somolink/school-dashboard
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 3000
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+# PostgreSQL
+postgresql:
+  enabled: true
+  auth:
+    username: postgres
+    password: changeme
+    database: somolink
+  primary:
+    persistence:
+      enabled: true
+      size: 20Gi
+    resources:
+      requests:
+        memory: "1Gi"
+        cpu: "500m"
+
+# TimescaleDB extension
+timescaledb:
+  enabled: true
+
+# Redis
+redis:
+  enabled: true
+  architecture: standalone
+  auth:
+    enabled: true
+    password: changeme
+  master:
+    persistence:
+      enabled: true
+      size: 8Gi
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "250m"
+
+# Kafka
+kafka:
+  enabled: true
+  replicaCount: 3
+  persistence:
+    enabled: true
+    size: 10Gi
+  zookeeper:
+    enabled: true
+    persistence:
+      enabled: true
+      size: 8Gi
+
+# Prometheus
+prometheus:
+  enabled: true
+  server:
+    persistentVolume:
+      enabled: true
+      size: 10Gi
+    retention: "30d"
+  alertmanager:
+    enabled: true
+
+# Grafana
+grafana:
+  enabled: true
+  adminPassword: changeme
+  persistence:
+    enabled: true
+    size: 5Gi
+  datasources:
+    - name: Prometheus
+      type: prometheus
+      url: http://prometheus-server
+      access: proxy
+      isDefault: true
+
+# Ingress
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  hosts:
+    - host: api.somolink.ke
+      paths:
+        - path: /
+          pathType: Prefix
+          service: api-gateway
+    - host: app.somolink.ke
+      paths:
+        - path: /
+          pathType: Prefix
+          service: school-dashboard
+  tls:
+    - secretName: somolink-tls
+      hosts:
+        - api.somolink.ke
+        - app.somolink.ke
+
+# Autoscaling
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# Service Monitor (Prometheus Operator)
+serviceMonitor:
+  enabled: true
+  interval: 30s
+
+# Security
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  fsGroup: 1001
+
+# Network Policies
+networkPolicy:
+  enabled: true
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
