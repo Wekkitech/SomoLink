@@ -19,120 +19,17 @@ import java.util.UUID;
 public class PortConfigurationService {
 
     private final RouterOSClient routerClient;
-    private final PortConfigurationRepository repository;
     private final SchoolRepository schoolRepository;
     private final BridgeConfigurationRepository bridgeConfigurationRepository;
 
     public PortConfigurationService(RouterOSClient routerClient, PortConfigurationRepository repository, SchoolRepository schoolRepository, BridgeConfigurationRepository bridgeConfigurationRepository) {
         this.routerClient = routerClient;
-        this.repository = repository;
         this.schoolRepository = schoolRepository;
         this.bridgeConfigurationRepository = bridgeConfigurationRepository;
     }
 
     public List<String> listInterfaces() throws Exception {
         return routerClient.getInterfaces();
-    }
-
-    public void configurePort(ConfigurePortRequest request, Long schoolId) throws Exception {
-
-        School school = schoolRepository.findById(schoolId)
-                .orElseThrow(() -> new Exception("School not found"));
-
-        System.out.println("=== Starting PORT configuration for: " + request.getPortName() + " ===");
-
-        // -----------------------------------------------------
-        // STEP 1: Validate physical interface exists on router
-        // -----------------------------------------------------
-        List<String> interfaces = routerClient.getInterfaces();
-        System.out.println("Available interfaces: " + interfaces);
-
-        if (!interfaces.contains(request.getPortName())) {
-            throw new IllegalArgumentException(
-                    "Physical interface does not exist: " + request.getPortName()
-            );
-        }
-
-        // -----------------------------------------------------
-        // STEP 2: Validate DB (port not already configured)
-        // -----------------------------------------------------
-        if (repository.existsByPortName(request.getPortName())) {
-            throw new IllegalArgumentException(
-                    "This port is already configured in the system"
-            );
-        }
-
-        // -----------------------------------------------------
-        // STEP 3: Calculate network values
-        // -----------------------------------------------------
-        String cidr = request.getIpAddress() + "/" + request.getSubnetMask();
-        String networkCidr = NetworkUtils.toNetworkCidr(
-                request.getIpAddress(),
-                request.getSubnetMask()
-        );
-        String poolRange = NetworkUtils.calculatePool(
-                request.getIpAddress(),
-                request.getSubnetMask()
-        );
-        String poolName = "pool_" + request.getPortName() + "_" +
-                UUID.randomUUID().toString().substring(0, 6);
-
-        System.out.println("CIDR: " + cidr);
-        System.out.println("Network CIDR: " + networkCidr);
-        System.out.println("DHCP Pool Range: " + poolRange);
-        System.out.println("Pool Name: " + poolName);
-
-        // -----------------------------------------------------
-        // STEP 4: Apply PORT configuration on MikroTik
-        // (NO BRIDGE involved)
-        // -----------------------------------------------------
-        try {
-            // 4a: Assign IP directly to physical interface
-            System.out.println("Assigning IP to port: " + request.getPortName());
-            routerClient.assignIp(request.getPortName(), cidr);
-
-            // 4b: Create DHCP server on the same port
-            System.out.println("Creating DHCP server on port: " + request.getPortName());
-            routerClient.createDhcpAuto(
-                    request.getPortName(),
-                    request.getIpAddress(),
-                    request.getSubnetMask(),
-                    poolName,
-                    poolRange,
-                    networkCidr
-            );
-
-            System.out.println("Port configuration applied successfully on MikroTik.");
-
-        } catch (Exception ex) {
-            System.out.println("Error applying port config to MikroTik: " + ex.getMessage());
-            throw new RuntimeException(
-                    "Failed to apply port configuration to MikroTik",
-                    ex
-            );
-        }
-
-        // -----------------------------------------------------
-        // STEP 5: Persist PORT configuration in DB
-        // -----------------------------------------------------
-        PortConfiguration config = new PortConfiguration();
-        config.setPortName(request.getPortName());
-        config.setCidr(cidr);
-        config.setSubnetMask(request.getSubnetMask());
-        config.setNetworkCidr(networkCidr);
-        config.setDhcpPoolRange(poolRange);
-        config.setDhcpPoolName(poolName);
-        config.setDescription(request.getDescription());
-        config.setConfigured(true);
-        config.setSchool(school);
-
-        repository.save(config);
-
-        school.setPortConfiguration(config);
-        schoolRepository.save(school);
-
-        System.out.println("Port configuration saved successfully in DB.");
-        System.out.println("=== Port configuration completed ===");
     }
 
     public void configureBridge(ConfigureBridgeRequest request, Long schoolId) throws Exception {
@@ -243,7 +140,7 @@ public class PortConfigurationService {
         BridgeConfiguration bridgeConfig = new BridgeConfiguration();
         bridgeConfig.setBridgeName(bridgeName);
         bridgeConfig.setCidr(cidr);
-        bridgeConfig.setSubnetMask(String.valueOf(request.getSubnetMask()));
+        bridgeConfig.setSubnetMask(request.getSubnetMask());
         bridgeConfig.setNetworkCidr(networkCidr);
         bridgeConfig.setDhcpPoolName(poolName);
         bridgeConfig.setDhcpPoolRange(poolRange);
@@ -252,7 +149,7 @@ public class PortConfigurationService {
         bridgeConfig.setInterfaces(request.getInterfaces());
         bridgeConfig.setSchool(school);
 
-        bridgeConfigurationRepository.save(bridgeConfig);
+       bridgeConfigurationRepository.save(bridgeConfig);
 
         // =========================================================
         // STEP 7: Link bridge to school

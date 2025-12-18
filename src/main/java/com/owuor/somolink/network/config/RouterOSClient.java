@@ -1,13 +1,8 @@
 package com.owuor.somolink.network.config;
 
-import com.owuor.somolink.network.dto.HotspotLoginResponse;
-import jakarta.validation.constraints.NotBlank;
 import me.legrange.mikrotik.ApiConnection;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * A wrapper to interact with MikroTik RouterOS
@@ -32,6 +27,7 @@ public class RouterOSClient {
         con.login(username, password);
         return con;
     }
+
     /**
      * Test if the router is reachable and credentials work
      */
@@ -78,21 +74,61 @@ public class RouterOSClient {
         }
     }
 
+
     public List<String> getInterfaces() throws Exception {
         try (ApiConnection con = connect()) {
-            List<String> interfaces = new ArrayList<>();
 
-            List<Map<String, String>> result = con.execute("/interface/print");
-            for (Map<String, String> row : result) {
-                String name = row.get("name");
-                if (name != null) {
-                    interfaces.add(name);
+            // 1️⃣ All interfaces
+            List<Map<String, String>> allIfaces = con.execute("/interface/print");
+
+            // 2️⃣ Interfaces used in bridges
+            List<Map<String, String>> bridgePorts = con.execute("/interface/bridge/port/print");
+
+            // 3️⃣ Interfaces with IP addresses
+            List<Map<String, String>> ipAddresses = con.execute("/ip/address/print");
+
+            // 4️⃣ Interfaces with DHCP servers
+            List<Map<String, String>> dhcpServers = con.execute("/ip/dhcp-server/print");
+
+            // ---- Collect USED interfaces ----
+            Set<String> usedInterfaces = new HashSet<>();
+
+            for (Map<String, String> p : bridgePorts) {
+                usedInterfaces.add(p.get("interface"));
+            }
+
+            for (Map<String, String> ip : ipAddresses) {
+                usedInterfaces.add(ip.get("interface"));
+            }
+
+            for (Map<String, String> dhcp : dhcpServers) {
+                usedInterfaces.add(dhcp.get("interface"));
+            }
+
+            // ---- Filter RAW interfaces ----
+            List<String> rawInterfaces = new ArrayList<>();
+
+            for (Map<String, String> iface : allIfaces) {
+                String name = iface.get("name");
+                String type = iface.get("type");
+                String disabled = iface.get("disabled");
+
+                if (name == null) continue;
+
+                // Optional safety filters
+                if ("true".equals(disabled)) continue;           // skip disabled
+                if ("loopback".equals(type)) continue;           // skip loopback
+                if ("bridge".equals(type)) continue;             // skip bridges
+
+                if (!usedInterfaces.contains(name)) {
+                    rawInterfaces.add(name);
                 }
             }
 
-            return interfaces;
+            return rawInterfaces;
         }
     }
+
 
     public void createDhcpAuto(String portName, String ip, int prefix, String poolName, String poolRange, String networkCidr) throws Exception {
         try (ApiConnection con = connect()) {
@@ -222,6 +258,7 @@ public class RouterOSClient {
 
         }
     }
+
     public void createOrUpdateHotspotUser(
             String username,
             String password,
@@ -331,5 +368,7 @@ public class RouterOSClient {
             System.out.println("[ROLLBACK] Bridge removed successfully: " + bridgeName);
         }
     }
+
+
 
 }

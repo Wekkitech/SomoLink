@@ -18,7 +18,7 @@ public class BridgeConfiguration {
     private String bridgeName;
 
     private String cidr;
-    private String subnetMask;
+    private int subnetMask;
     private String networkCidr;
 
     private String dhcpPoolName;

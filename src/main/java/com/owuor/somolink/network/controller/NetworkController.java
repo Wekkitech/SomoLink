@@ -36,18 +36,10 @@ public class NetworkController {
         }
     }
 
-    @PostMapping("/configure/port/{schoolId}")
-    public ResponseEntity<String> configurePort(@Valid @RequestBody ConfigurePortRequest request,  @PathVariable Long schoolId, String parameter) {
-        try {
-            portService.configurePort(request,schoolId);
-            return ResponseEntity.ok("Port configured successfully!");
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body("Failed to configure port: " + e.getMessage());
-        }
-    }
 
     @PostMapping("/configure/bridge/{schoolId}")
     public ResponseEntity<?> configureBridge(@RequestBody ConfigureBridgeRequest request, @PathVariable Long schoolId) throws Exception {
+
         portService.configureBridge(request, schoolId);
         return ResponseEntity.ok("Bridge configured successfully");
     }

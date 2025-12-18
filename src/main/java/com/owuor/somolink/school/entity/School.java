@@ -24,8 +24,6 @@ public class School {
     @OneToMany(mappedBy = "school")
     private List<User> users;
 
-    @OneToOne(mappedBy = "school", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private PortConfiguration portConfiguration;
 
     @OneToMany(mappedBy = "school")
     private List<Device> devices;

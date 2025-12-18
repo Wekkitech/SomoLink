@@ -49,6 +49,7 @@ public class SchoolService {
     public SchoolResponse getSingleSchool(Long schoolId) {
         School school = schoolRepository.findById(schoolId)
                 .orElseThrow(() -> new IllegalArgumentException("School not found with id: " + schoolId));
+        System.out.println("School found: " + school.getBridgeConfiguration().getBridgeName());
 
         return mapToDto(school);
 
@@ -62,33 +63,21 @@ public class SchoolService {
         dto.setLocation(school.getLocation());
         dto.setActive(school.isActive());
 
-        // Port Configuration
-        if (school.getPortConfiguration() != null) {
-            PortConfigurationResponseDto portDto = new PortConfigurationResponseDto();
-            portDto.setId(school.getPortConfiguration().getId());
-            portDto.setConfigured(school.getPortConfiguration().isConfigured());
-            portDto.setCidr(school.getPortConfiguration().getCidr());
-            portDto.setSubnetMask(school.getPortConfiguration().getSubnetMask());
-            portDto.setPortName(school.getPortConfiguration().getPortName());
-            portDto.setNetworkCidr(school.getPortConfiguration().getNetworkCidr());
-            portDto.setDhcpPoolRange(school.getPortConfiguration().getDhcpPoolRange());
-            portDto.setDhcpPoolRange(school.getPortConfiguration().getDhcpPoolRange());
-            portDto.setDescription(school.getPortConfiguration().getDescription());
-        }
-
         // Bridge Configuration
         if (school.getBridgeConfiguration() != null) {
             BridgeConfigurationResponseDto bridgeConfigurationResponseDto = new BridgeConfigurationResponseDto();
-            bridgeConfigurationResponseDto.setId(school.getPortConfiguration().getId());
-            bridgeConfigurationResponseDto.setConfigured(school.getPortConfiguration().isConfigured());
-            bridgeConfigurationResponseDto.setCidr(school.getPortConfiguration().getCidr());
-            bridgeConfigurationResponseDto.setSubnetMask(school.getPortConfiguration().getSubnetMask());
-            bridgeConfigurationResponseDto.setPortName(school.getPortConfiguration().getPortName());
-            bridgeConfigurationResponseDto.setNetworkCidr(school.getPortConfiguration().getNetworkCidr());
-            bridgeConfigurationResponseDto.setDhcpPoolRange(school.getPortConfiguration().getDhcpPoolRange());
-            bridgeConfigurationResponseDto.setDhcpPoolRange(school.getPortConfiguration().getDhcpPoolRange());
-            bridgeConfigurationResponseDto.setDescription(school.getPortConfiguration().getDescription());
+            bridgeConfigurationResponseDto.setId(school.getBridgeConfiguration().getId());
+            bridgeConfigurationResponseDto.setConfigured(school.getBridgeConfiguration().isConfigured());
+            bridgeConfigurationResponseDto.setCidr(school.getBridgeConfiguration().getCidr());
+            bridgeConfigurationResponseDto.setSubnetMask(school.getBridgeConfiguration().getSubnetMask());
+            bridgeConfigurationResponseDto.setPortName(school.getBridgeConfiguration().getBridgeName());
+            bridgeConfigurationResponseDto.setNetworkCidr(school.getBridgeConfiguration().getNetworkCidr());
+            bridgeConfigurationResponseDto.setDhcpPoolRange(school.getBridgeConfiguration().getDhcpPoolRange());
+            bridgeConfigurationResponseDto.setDhcpPoolName(school.getBridgeConfiguration().getDhcpPoolName());
+            bridgeConfigurationResponseDto.setDescription(school.getBridgeConfiguration().getDescription());
             bridgeConfigurationResponseDto.setInterfaces(school.getBridgeConfiguration().getInterfaces());
+            dto.setBridgeConfiguration(bridgeConfigurationResponseDto);
+
         }
 
         // Devices

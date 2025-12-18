@@ -8,6 +8,6 @@ public class RouterConfig {
 
     @Bean
     public RouterOSClient routerOSClient() {
-        return new RouterOSClient("192.168.79.1", "admin", "admin");
+        return new RouterOSClient("192.168.88.1", "admin", "admin");
     }
 }
