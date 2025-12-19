@@ -33,14 +33,15 @@ public class DeviceService {
 
         Device saved = deviceRepository.save(device);
 
-        return toResponse(saved);
+        return toResponse(saved,school);
     }
 
-    private DeviceResponse toResponse(Device device) {
+    private DeviceResponse toResponse(Device device,School school) {
         DeviceResponse res = new DeviceResponse();
         res.setId(device.getId());
         res.setDeviceName(device.getDeviceName());
         res.setMacAddress(device.getMacAddress());
+        res.setSchoolName(school.getName());
         return res;
     }
 }

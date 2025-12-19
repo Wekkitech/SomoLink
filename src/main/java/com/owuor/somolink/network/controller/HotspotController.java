@@ -23,10 +23,9 @@ public class HotspotController {
 
     /** Create a new Hotspot profile */
     @PostMapping("/create/user/profile")
-    public ResponseEntity<String> createUserProfile(@Valid @RequestBody UserProfileRequest request) {
+    public ResponseEntity<?> createUserProfile(@Valid @RequestBody UserProfileRequest request) {
         try {
-            hotspotService.createUserProfile(request);
-            return ResponseEntity.ok("User profile created successfully: " + request.getProfileName());
+            return ResponseEntity.ok(hotspotService.createUserProfile(request));
         } catch (Exception ex) {
             return ResponseEntity.badRequest().body("Failed to create profile: " + ex.getMessage());
         }

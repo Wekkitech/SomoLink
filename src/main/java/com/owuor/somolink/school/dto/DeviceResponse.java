@@ -9,5 +9,5 @@ public class DeviceResponse {
     private Long id;
     private String deviceName;
     private String macAddress;
-    private School school;
+    private String schoolName;
 }

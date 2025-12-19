@@ -49,7 +49,6 @@ public class SchoolService {
     public SchoolResponse getSingleSchool(Long schoolId) {
         School school = schoolRepository.findById(schoolId)
                 .orElseThrow(() -> new IllegalArgumentException("School not found with id: " + schoolId));
-        System.out.println("School found: " + school.getBridgeConfiguration().getBridgeName());
 
         return mapToDto(school);
 
@@ -86,7 +85,7 @@ public class SchoolService {
                 DeviceResponse d = new DeviceResponse();
                 d.setId(device.getId());
                 d.setMacAddress(device.getMacAddress());
-                d.setSchool(school);
+                d.setSchoolName(school.getName());
                 d.setDeviceName(device.getDeviceName());
 
                 return d;

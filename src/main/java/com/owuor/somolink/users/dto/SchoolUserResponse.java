@@ -21,5 +21,4 @@ public class SchoolUserResponse {
     private Role role;
     private Long schoolId;
 
-
 }

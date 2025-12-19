@@ -109,7 +109,6 @@ public class PortConfigurationService {
             routerClient.createDhcpAuto(
                     bridgeName,
                     request.getIpAddress(),
-                    request.getSubnetMask(),
                     poolName,
                     poolRange,
                     networkCidr
@@ -122,6 +121,7 @@ public class PortConfigurationService {
             // ROLLBACK: Remove partially created bridge
             // =====================================================
             System.err.println("Error during bridge configuration. Rolling back...");
+
             try {
                 routerClient.deleteBridgeIfExists(bridgeName);
             } catch (Exception rollbackEx) {

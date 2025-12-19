@@ -39,7 +39,7 @@ public class HotspotService {
     /**
      * Create a user profile on MikroTik AND save in DB
      */
-    public void createUserProfile(UserProfileRequest request) throws Exception {
+    public UserProfile createUserProfile(UserProfileRequest request) throws Exception {
         // 1. Apply to MikroTik
         routerClient.createHotspotUserProfile(
                 request.getProfileName(),
@@ -58,7 +58,7 @@ public class HotspotService {
         profile.setIdleTimeout(request.getIdleTimeout());
         profile.setAmount(request.getAmount());
 
-        userProfileRepository.save(profile);
+        return userProfileRepository.save(profile);
     }
 
     /**

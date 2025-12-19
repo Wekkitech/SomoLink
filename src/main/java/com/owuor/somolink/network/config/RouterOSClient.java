@@ -1,12 +1,22 @@
 package com.owuor.somolink.network.config;
 
+import lombok.extern.slf4j.Slf4j;
 import me.legrange.mikrotik.ApiConnection;
 
 import java.util.*;
 
 /**
- * A wrapper to interact with MikroTik RouterOS
+ * RouterOSClient
+ * <p>
+ * Low-level wrapper for provisioning MikroTik RouterOS devices.
+ * Handles interfaces, bridges, DHCP, hotspot, and wireless setup.
+ * <p>
+ * IMPORTANT:
+ * RouterOS creates some resources DISABLED by default.
+ * This class explicitly enables everything that must be enabled
+ * for the configuration to actually work.
  */
+@Slf4j
 public class RouterOSClient {
 
     private final String host;      // Router IP
@@ -20,7 +30,7 @@ public class RouterOSClient {
     }
 
     /**
-     * Connect to the router
+     * Establishes and returns a logged-in RouterOS API connection.
      */
     private ApiConnection connect() throws Exception {
         ApiConnection con = ApiConnection.connect(host);
@@ -29,96 +39,110 @@ public class RouterOSClient {
     }
 
     /**
-     * Test if the router is reachable and credentials work
+     * Tests router reachability and credentials by reading system identity.
      */
     public boolean testConnection() {
         try (ApiConnection con = connect()) {
-            // Simple test: fetch router identity
-            String identity = con.execute("/system/identity/print").get(0).get("name");
+            String identity = con.execute("/system/identity/print")
+                    .get(0).get("name");
             System.out.println("Router identity: " + identity);
             return true;
         } catch (Exception e) {
-            e.printStackTrace();
+            log.info("Router error: {}", e.getMessage());
             return false;
         }
     }
 
-
     /**
-     * Assign an IP to a port/interface
+     * Assigns an IP address to an interface.
+     * Ensures the interface is ENABLED before assigning the IP.
      */
-    public void assignIp(String portName, String cidr) throws Exception {
+    public void assignIp(String bridgeName, String cidr) throws Exception {
         try (ApiConnection con = connect()) {
-            con.execute(String.format("/ip/address/add address=%s interface=%s", cidr, portName));
+            String cmd = String.format("/ip/address/add address=%s interface=%s", cidr, bridgeName);
+            System.out.println("[DEBUG] Executing: " + cmd);
+            try {
+                con.execute(cmd);
+            } catch (Exception ex) {
+                System.err.println("[ERROR] Failed to assign IP %s to bridge " + bridgeName + ": " + ex.getMessage());
+                throw ex;
+            }
         }
     }
 
+
     /**
-     * Create DHCP server on the port
+     * Creates a DHCP server on a given interface or bridge.
+     * Explicitly enables the interface and the DHCP server.
      */
     public void createDhcp(String portName, String subnetCidr, String poolRange) throws Exception {
         try (ApiConnection con = connect()) {
-            String poolName = "pool_" + portName + "_" + UUID.randomUUID().toString().substring(0, 6);
 
+            String poolName = "pool_" + portName + "_" +
+                    UUID.randomUUID().toString().substring(0, 6);
+            String dhcpName = "dhcp_" + portName;
 
-            // 1. Create pool
-            con.execute(String.format("/ip/pool/add name=%s ranges=%s", poolName, poolRange));
+            // Ensure interface is enabled
+            con.execute("/interface/set [find name=" + portName + "] disabled=no");
 
-            // 2. Add DHCP server
-            con.execute(String.format("/ip/dhcp-server/add name=dhcp_%s interface=%s address-pool=%s",
-                    portName, portName, poolName));
+            // Create IP pool (pools are always enabled by default)
+            con.execute(String.format(
+                    "/ip/pool/add name=%s ranges=%s",
+                    poolName, poolRange
+            ));
 
-            // 3. Add network
-            String gatewayIp = subnetCidr.split("/")[0]; // first IP in CIDR
-            con.execute(String.format("/ip/dhcp-server/network/add address=%s gateway=%s", subnetCidr, gatewayIp));
+            // Create DHCP server (RouterOS creates this DISABLED)
+            con.execute(String.format(
+                    "/ip/dhcp-server/add name=%s interface=%s address-pool=%s",
+                    dhcpName, portName, poolName
+            ));
+
+            // Add DHCP network
+            String gatewayIp = subnetCidr.split("/")[0];
+            con.execute(String.format(
+                    "/ip/dhcp-server/network/add address=%s gateway=%s",
+                    subnetCidr, gatewayIp
+            ));
+
+            // REQUIRED: Enable DHCP server
+            con.execute("/ip/dhcp-server/set [find name=" + dhcpName + "] disabled=no");
         }
     }
 
-
+    /**
+     * Returns a list of raw (unused) interfaces.
+     * Filters out bridges, disabled interfaces, and interfaces already in use.
+     */
     public List<String> getInterfaces() throws Exception {
         try (ApiConnection con = connect()) {
 
-            // 1️⃣ All interfaces
             List<Map<String, String>> allIfaces = con.execute("/interface/print");
-
-            // 2️⃣ Interfaces used in bridges
+            log.info("All interfaces: {}", allIfaces);
             List<Map<String, String>> bridgePorts = con.execute("/interface/bridge/port/print");
-
-            // 3️⃣ Interfaces with IP addresses
             List<Map<String, String>> ipAddresses = con.execute("/ip/address/print");
-
-            // 4️⃣ Interfaces with DHCP servers
             List<Map<String, String>> dhcpServers = con.execute("/ip/dhcp-server/print");
 
-            // ---- Collect USED interfaces ----
             Set<String> usedInterfaces = new HashSet<>();
 
             for (Map<String, String> p : bridgePorts) {
                 usedInterfaces.add(p.get("interface"));
             }
-
             for (Map<String, String> ip : ipAddresses) {
                 usedInterfaces.add(ip.get("interface"));
             }
-
             for (Map<String, String> dhcp : dhcpServers) {
                 usedInterfaces.add(dhcp.get("interface"));
             }
 
-            // ---- Filter RAW interfaces ----
             List<String> rawInterfaces = new ArrayList<>();
 
             for (Map<String, String> iface : allIfaces) {
                 String name = iface.get("name");
                 String type = iface.get("type");
-                String disabled = iface.get("disabled");
 
                 if (name == null) continue;
-
-                // Optional safety filters
-                if ("true".equals(disabled)) continue;           // skip disabled
-                if ("loopback".equals(type)) continue;           // skip loopback
-                if ("bridge".equals(type)) continue;             // skip bridges
+                if ("loopback".equals(type)) continue;
+                if ("bridge".equals(type)) continue;
 
                 if (!usedInterfaces.contains(name)) {
                     rawInterfaces.add(name);
@@ -129,108 +153,127 @@ public class RouterOSClient {
         }
     }
 
+    /**
+     * Automatically creates DHCP pool, server, and network.
+     * Explicitly enables the interface and DHCP server.
+     */
 
-    public void createDhcpAuto(String portName, String ip, int prefix, String poolName, String poolRange, String networkCidr) throws Exception {
+    public void createDhcpAuto(String bridgeName, String ip, String poolName, String poolRange, String networkCidr) throws Exception {
         try (ApiConnection con = connect()) {
 
-            // 1. Create pool
-            System.out.println("Creating DHCP pool: " + poolName + " with range " + poolRange);
-            con.execute(String.format("/ip/pool/add name=%s ranges=%s", poolName, poolRange));
+            String dhcpName = "dhcp_" + bridgeName;
 
-            // 2. Create DHCP server
-            System.out.println("Creating DHCP server on interface: " + portName);
-            con.execute(String.format(
-                    "/ip/dhcp-server/add name=dhcp_%s interface=%s address-pool=%s",
-                    portName, portName, poolName
-            ));
-
-            // 3. Add DHCP network
-            System.out.println("Adding DHCP network: " + networkCidr + " gateway: " + ip);
-            con.execute(String.format(
-                    "/ip/dhcp-server/network/add address=%s gateway=%s",
-                    networkCidr, ip
-            ));
-
-            System.out.println("DHCP configuration applied successfully.");
-        }
-    }
-
-
-    public void createHotspotUserProfile(String profileName, int rateUpload, int rateDownload,
-                                         String sessionTimeout, String idleTimeout) throws Exception {
-        System.out.println("[DEBUG] Starting createHotspotUserProfile...");
-        System.out.println("[DEBUG] Profile Name: " + profileName);
-        System.out.println("[DEBUG] Rate Upload: " + rateUpload + "kbps");
-        System.out.println("[DEBUG] Rate Download: " + rateDownload + "kbps");
-        System.out.println("[DEBUG] Session Timeout: " + sessionTimeout);
-        System.out.println("[DEBUG] Idle Timeout: " + idleTimeout);
-
-        try (ApiConnection con = connect()) {
-            System.out.println("[DEBUG] Connected to MikroTik router");
-
-            // Default values
-            String session = sessionTimeout != null ? sessionTimeout : "00:00:00";
-            String idle = idleTimeout != null ? idleTimeout : "00:00:00";
-
-            // Build rate-limit string
-            String rateLimitStr = rateUpload + "k/" + rateDownload + "k";
-
-            System.out.println("[DEBUG] Rate-limit string: " + rateLimitStr);
-
-            // Build command
-            String cmd = String.format("/ip/hotspot/user/profile/add name=\"%s\" rate-limit=%s session-timeout=%s idle-timeout=%s",
-                    profileName,
-                    rateLimitStr,
-                    session,
-                    idle
-            );
-
-            System.out.println("[DEBUG] Executing command: " + cmd);
-
-            // Execute
+            // Create pool
+            String cmdPool = String.format("/ip/pool/add name=%s ranges=%s", poolName, poolRange);
+            System.out.println("[DEBUG] Executing: " + cmdPool);
             try {
-                con.execute(cmd);
-                System.out.println("[DEBUG] Hotspot profile created: " + profileName);
-            } catch (Exception e) {
-                System.err.println("[ERROR] Failed to create profile: " + e.getMessage());
-                throw e;
+                con.execute(cmdPool);
+            } catch (Exception ex) {
+                System.err.println("[ERROR] Failed to create pool: " + ex.getMessage());
+                throw ex;
+            }
+
+            // Create DHCP server
+            String cmdDhcp = String.format("/ip/dhcp-server/add name=%s interface=%s address-pool=%s", dhcpName, bridgeName, poolName);
+            System.out.println("[DEBUG] Executing: " + cmdDhcp);
+            try {
+                con.execute(cmdDhcp);
+            } catch (Exception ex) {
+                System.err.println("[ERROR] Failed to create DHCP server: " + ex.getMessage());
+                throw ex;
+            }
+
+            // Add DHCP network
+            String cmdNetwork = String.format("/ip/dhcp-server/network/add address=%s gateway=%s", networkCidr, ip);
+            System.out.println("[DEBUG] Executing: " + cmdNetwork);
+            try {
+                con.execute(cmdNetwork);
+            } catch (Exception ex) {
+                System.err.println("[ERROR] Failed to create DHCP network: " + ex.getMessage());
+                throw ex;
+            }
+
+            // Enable DHCP server
+            String cmdEnableDhcp = String.format("/ip/dhcp-server/enable numbers=%s", dhcpName);
+            System.out.println("[DEBUG] Executing: " + cmdEnableDhcp);
+            try {
+                con.execute(cmdEnableDhcp);
+            } catch (Exception ex) {
+                System.err.println("[ERROR] Failed to enable DHCP: " + ex.getMessage());
+                throw ex;
             }
         }
     }
 
 
+    /**
+     * Creates a hotspot user profile with bandwidth and timeout limits.
+     */
+    public void createHotspotUserProfile(
+            String profileName,
+            int rateUpload,
+            int rateDownload,
+            String sessionTimeout,
+            String idleTimeout
+    ) throws Exception {
+
+        try (ApiConnection con = connect()) {
+
+            String rateLimit = rateUpload + "k/" + rateDownload + "k";
+            String session = sessionTimeout != null ? sessionTimeout : "00:00:00";
+            String idle = idleTimeout != null ? idleTimeout : "00:00:00";
+
+            con.execute(String.format(
+                    "/ip/hotspot/user/profile/add name=\"%s\" rate-limit=%s session-timeout=%s idle-timeout=%s",
+                    profileName, rateLimit, session, idle
+            ));
+        }
+    }
+
+    /**
+     * Creates and enables a hotspot server on an interface or bridge.
+     * Hotspots are CREATED DISABLED by RouterOS.
+     */
     public void setupHotspot(String interfaceName, String hotspotName, String profileName) throws Exception {
         try (ApiConnection con = connect()) {
-            // Default values if hotspotName not provided
+
+            // Ensure interface or bridge is enabled
+            con.execute("/interface/set [find name=" + interfaceName + "] disabled=no");
+
             String hsName = hotspotName != null ? hotspotName : interfaceName;
 
-            // Add hotspot server
-            String cmd = String.format("/ip/hotspot/add name=%s interface=%s profile=%s address-pool=dhcp_%s",
-                    hsName, interfaceName, profileName, interfaceName);
-            con.execute(cmd);
+            con.execute(String.format(
+                    "/ip/hotspot/add name=%s interface=%s profile=%s address-pool=dhcp_%s",
+                    hsName, interfaceName, profileName, interfaceName
+            ));
 
-            // Enable hotspot
-            con.execute("/ip/hotspot/enable " + hsName);
-
-            System.out.println("Hotspot setup completed on interface: " + interfaceName);
+            // REQUIRED: Enable hotspot
+            con.execute("/ip/hotspot/set [find name=" + hsName + "] disabled=no");
         }
     }
 
-    public void createHotspotServerProfile(String profileName, String hotspotAddress, String dnsName) throws Exception {
+    /**
+     * Creates a hotspot server profile (HTML login, auth methods, DNS).
+     */
+    public void createHotspotServerProfile(
+            String profileName,
+            String hotspotAddress,
+            String dnsName
+    ) throws Exception {
+
         try (ApiConnection con = connect()) {
-            // Check if profile already exists
-            con.execute("/ip/hotspot/profile/print where name=" + profileName);
 
-            // Add hotspot profile
-            String cmd = String.format("/ip/hotspot/profile/add name=%s hotspot-address=%s dns-name=%s html-directory=hotspot login-by=cookie,http-chap,http-pap",
-                    profileName, hotspotAddress, dnsName);
-            con.execute(cmd);
-
-            System.out.println("Hotspot server profile created: " + profileName);
+            con.execute(String.format(
+                    "/ip/hotspot/profile/add name=%s hotspot-address=%s dns-name=%s " +
+                            "html-directory=hotspot login-by=cookie,http-chap,http-pap",
+                    profileName, hotspotAddress, dnsName
+            ));
         }
     }
 
-
+    /**
+     * Creates a hotspot user with username, password, and profile.
+     */
     public void createHotspotUser(
             String username,
             String password,
@@ -240,26 +283,112 @@ public class RouterOSClient {
 
         try (ApiConnection con = connect()) {
 
-            System.out.println("[HOTSPOT] Creating user...");
-            System.out.println("Username: " + username);
-            System.out.println("Profile: " + profileName);
-
-            // 1️⃣ Create hotspot user
-            String cmd = String.format(
+            con.execute(String.format(
                     "/ip/hotspot/user/add name=%s password=%s profile=%s",
-                    username,
-                    password,
-                    profileName
-            );
-
-            con.execute(cmd);
-
-            System.out.println("[HOTSPOT] User created successfully");
-
+                    username, password, profileName
+            ));
         }
     }
 
-    public void createOrUpdateHotspotUser(
+    /**
+     * Creates a bridge and attaches interfaces.
+     * Ensures both bridge and interfaces are enabled.
+     */
+    public void createBridge(String bridgeName, List<String> interfaces) throws Exception {
+        try (ApiConnection con = connect()) {
+
+            // Enable interfaces FIRST
+            for (String iface : interfaces) {
+                String cmd;
+
+                if (iface.toLowerCase().startsWith("wlan")) {
+                    // Wireless: use 'set disabled=no'
+                    cmd = String.format("/interface/wireless/enable numbers=%s", iface);
+                } else if (iface.toLowerCase().startsWith("ether")) {
+                    // Ethernet: can use 'enable'
+                    cmd = String.format("/interface/enable numbers=%s", iface);
+                } else {
+                    // Fallback: generic
+                    cmd = String.format("/interface/set %s disabled=no", iface);
+                }
+
+                System.out.println("[DEBUG] Executing: " + cmd);
+                try {
+                    con.execute(cmd);
+                } catch (Exception ex) {
+                    System.err.println("[ERROR] Failed to enable interface " + iface + ": " + ex.getMessage());
+                    throw ex;
+                }
+            }
+
+
+            // Create bridge (already enabled)
+            String cmdBridge = String.format("/interface/bridge/add name=%s disabled=no", bridgeName);
+            System.out.println("[DEBUG] Executing: " + cmdBridge);
+            try {
+                con.execute(cmdBridge);
+            } catch (Exception ex) {
+                System.err.println("[ERROR] Failed to create bridge " + bridgeName + ": " + ex.getMessage());
+                throw ex;
+            }
+
+            // Attach interfaces to bridge
+            for (String iface : interfaces) {
+                String cmdPort = String.format("/interface/bridge/port/add bridge=%s interface=%s", bridgeName, iface);
+                System.out.println("[DEBUG] Executing: " + cmdPort);
+                try {
+                    con.execute(cmdPort);
+                } catch (Exception ex) {
+                    System.err.println("[ERROR] Failed to add interface " + iface + " to bridge " + bridgeName + ": " + ex.getMessage());
+                    throw ex;
+                }
+            }
+        }
+    }
+
+    /**
+     * Removes a bridge and all related configuration (ports, IPs, DHCP).
+     * Used for rollback and cleanup.
+     */
+    public void deleteBridgeIfExists(String bridgeName) throws Exception {
+        try (ApiConnection con = connect()) {
+            String cmd = String.format("/interface/bridge/remove where name=%s", bridgeName);
+            System.out.println("[DEBUG] Executing: " + cmd);
+            try {
+                con.execute(cmd);
+            } catch (Exception ex) {
+                System.err.println("[ERROR] Failed to delete bridge: " + ex.getMessage());
+                throw ex;
+            }
+        }
+    }
+
+    /**
+     * Configures an OPEN (no password) WLAN for hotspot usage.
+     * Sets AP mode, SSID, removes security, and enables the interface.
+     */
+    public void setupOpenWlan(
+            String wlanInterface,
+            String ssid
+    ) throws Exception {
+
+        try (ApiConnection con = connect()) {
+
+            // WLANs are often disabled by default
+            con.execute(String.format(
+                    "/interface/wireless/set [find name=%s] " +
+                            "mode=ap-bridge ssid=\"%s\" security-profile=none disabled=no",
+                    wlanInterface, ssid
+            ));
+        }
+    }
+
+    /**
+     * Creates a hotspot user for a SCHOOL device.
+     * Used when provisioning a school router to allow device authentication
+     * against the hotspot profile assigned to that school.
+     */
+    public void createSchoolHotspotUser(
             String username,
             String password,
             String schoolProfile
@@ -267,108 +396,20 @@ public class RouterOSClient {
 
         try (ApiConnection con = connect()) {
 
-            System.out.println("[HOTSPOT] Creating user...");
+            System.out.println("[HOTSPOT] Creating school hotspot user...");
             System.out.println("Username: " + username);
 
-            // 1️⃣ Create hotspot user
+            // Create hotspot user
             String cmd = String.format(
                     "/ip/hotspot/user/add name=%s password=%s profile=%s",
-                    username,
-                    password,
-                    schoolProfile
+                    username, password, schoolProfile
             );
 
             con.execute(cmd);
 
-            System.out.println("[HOTSPOT] User created successfully");
-
-
+            System.out.println("[HOTSPOT] School hotspot user created successfully");
         }
     }
-
-    public void createBridge(String bridgeName, List<String> interfaces) throws Exception {
-        try (ApiConnection con = connect()) {
-            // 1. Add bridge
-            con.execute(String.format("/interface/bridge/add name=%s", bridgeName));
-            System.out.println("Bridge " + bridgeName + " created");
-
-            // 2. Add interfaces to bridge
-            for (String iface : interfaces) {
-                con.execute(String.format("/interface/bridge/port/add bridge=%s interface=%s", bridgeName, iface));
-                System.out.println("Interface " + iface + " added to bridge " + bridgeName);
-            }
-        }
-    }
-
-    public void deleteBridgeIfExists(String bridgeName) throws Exception {
-
-        try (ApiConnection con = connect()) {
-
-            // -----------------------------------------------------
-            // STEP 1: Find bridge ID
-            // -----------------------------------------------------
-            List<Map<String, String>> bridges = con.execute(
-                    "/interface/bridge/print where name=" + bridgeName
-            );
-
-            if (bridges.isEmpty()) {
-                System.out.println("[ROLLBACK] Bridge does not exist: " + bridgeName);
-                return; // Nothing to delete
-            }
-
-            String bridgeId = bridges.get(0).get(".id");
-            System.out.println("[ROLLBACK] Found bridge " + bridgeName + " with id " + bridgeId);
-
-            // -----------------------------------------------------
-            // STEP 2: Remove bridge ports (interfaces)
-            // -----------------------------------------------------
-            List<Map<String, String>> ports = con.execute(
-                    "/interface/bridge/port/print where bridge=" + bridgeName
-            );
-
-            for (Map<String, String> port : ports) {
-                String portId = port.get(".id");
-                String iface = port.get("interface");
-
-                System.out.println("[ROLLBACK] Removing interface " + iface + " from bridge " + bridgeName);
-                con.execute("/interface/bridge/port/remove " + portId);
-            }
-
-            // -----------------------------------------------------
-            // STEP 3: Remove IP addresses from bridge
-            // -----------------------------------------------------
-            List<Map<String, String>> ips = con.execute(
-                    "/ip/address/print where interface=" + bridgeName
-            );
-
-            for (Map<String, String> ip : ips) {
-                String ipId = ip.get(".id");
-                System.out.println("[ROLLBACK] Removing IP from bridge " + bridgeName);
-                con.execute("/ip/address/remove " + ipId);
-            }
-
-            // -----------------------------------------------------
-            // STEP 4: Remove DHCP server attached to bridge
-            // -----------------------------------------------------
-            List<Map<String, String>> dhcps = con.execute(
-                    "/ip/dhcp-server/print where interface=" + bridgeName
-            );
-
-            for (Map<String, String> dhcp : dhcps) {
-                String dhcpId = dhcp.get(".id");
-                System.out.println("[ROLLBACK] Removing DHCP server from bridge " + bridgeName);
-                con.execute("/ip/dhcp-server/remove " + dhcpId);
-            }
-
-            // -----------------------------------------------------
-            // STEP 5: Finally remove the bridge
-            // -----------------------------------------------------
-            con.execute("/interface/bridge/remove " + bridgeId);
-
-            System.out.println("[ROLLBACK] Bridge removed successfully: " + bridgeName);
-        }
-    }
-
 
 
 }

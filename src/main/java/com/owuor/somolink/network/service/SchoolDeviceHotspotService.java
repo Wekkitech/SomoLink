@@ -37,7 +37,7 @@ public class SchoolDeviceHotspotService {
         String password = UUID.randomUUID().toString().substring(0, 8);
 
         // 🔥 Create hotspot user
-        routerOSClient.createOrUpdateHotspotUser(
+        routerOSClient.createSchoolHotspotUser(
                 username,
                 password,
                 SCHOOL_PROFILE
