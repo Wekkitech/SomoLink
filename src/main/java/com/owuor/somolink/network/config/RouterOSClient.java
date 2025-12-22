@@ -374,14 +374,35 @@ public class RouterOSClient {
 
         try (ApiConnection con = connect()) {
 
-            // WLANs are often disabled by default
-            con.execute(String.format(
-                    "/interface/wireless/set [find name=%s] " +
-                            "mode=ap-bridge ssid=\"%s\" security-profile=none disabled=no",
-                    wlanInterface, ssid
-            ));
+            // 1. Configure wireless interface
+            String cmdSetWlan = String.format(
+                    "/interface/wireless/set numbers=%s ssid=\"%s\" mode=ap-bridge " ,
+                    wlanInterface,
+                    ssid
+            );
+            System.out.println("[DEBUG] Executing: " + cmdSetWlan);
+            try {
+                con.execute(cmdSetWlan);
+            } catch (Exception ex) {
+                System.err.println("[ERROR] Failed to configure WLAN: " + ex.getMessage());
+                throw ex;
+            }
+
+            // 2. Enable wireless interface
+            String cmdEnableWlan = String.format(
+                    "/interface/wireless/enable numbers=%s",
+                    wlanInterface
+            );
+            System.out.println("[DEBUG] Executing: " + cmdEnableWlan);
+            try {
+                con.execute(cmdEnableWlan);
+            } catch (Exception ex) {
+                System.err.println("[ERROR] Failed to enable WLAN: " + ex.getMessage());
+                throw ex;
+            }
         }
     }
+
 
     /**
      * Creates a hotspot user for a SCHOOL device.

@@ -1,10 +1,9 @@
 package com.owuor.somolink.network.service;
 
 import com.owuor.somolink.network.config.RouterOSClient;
+import com.owuor.somolink.network.dto.BridgeConfigurationResponseDto;
 import com.owuor.somolink.network.dto.ConfigureBridgeRequest;
-import com.owuor.somolink.network.dto.ConfigurePortRequest;
 import com.owuor.somolink.network.entity.BridgeConfiguration;
-import com.owuor.somolink.network.entity.PortConfiguration;
 import com.owuor.somolink.network.repository.BridgeConfigurationRepository;
 import com.owuor.somolink.network.repository.PortConfigurationRepository;
 import com.owuor.somolink.network.utils.NetworkUtils;
@@ -16,13 +15,13 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
-public class PortConfigurationService {
+public class BridgeConfigurationService {
 
     private final RouterOSClient routerClient;
     private final SchoolRepository schoolRepository;
     private final BridgeConfigurationRepository bridgeConfigurationRepository;
 
-    public PortConfigurationService(RouterOSClient routerClient, PortConfigurationRepository repository, SchoolRepository schoolRepository, BridgeConfigurationRepository bridgeConfigurationRepository) {
+    public BridgeConfigurationService(RouterOSClient routerClient, PortConfigurationRepository repository, SchoolRepository schoolRepository, BridgeConfigurationRepository bridgeConfigurationRepository) {
         this.routerClient = routerClient;
         this.schoolRepository = schoolRepository;
         this.bridgeConfigurationRepository = bridgeConfigurationRepository;
@@ -149,7 +148,7 @@ public class PortConfigurationService {
         bridgeConfig.setInterfaces(request.getInterfaces());
         bridgeConfig.setSchool(school);
 
-       bridgeConfigurationRepository.save(bridgeConfig);
+        bridgeConfigurationRepository.save(bridgeConfig);
 
         // =========================================================
         // STEP 7: Link bridge to school
@@ -159,6 +158,25 @@ public class PortConfigurationService {
 
         System.out.println("Bridge configuration saved successfully in DB.");
         System.out.println("=== Bridge configuration completed ===");
+    }
+
+    public List<BridgeConfigurationResponseDto> bridgeConfigurations() {
+        return bridgeConfigurationRepository.findAll().stream().map(
+                config -> new BridgeConfigurationResponseDto(
+                        config.getId(),
+                        config.getBridgeName(),
+                        config.getCidr(),
+                        config.getSubnetMask(),
+                        config.getNetworkCidr(),
+                        config.getDhcpPoolRange(),
+                        config.getDhcpPoolName(),
+                        config.getDescription(),
+                        config.isConfigured(),
+                        config.getInterfaces()
+                )
+        ).toList();
+
+
     }
 
 }

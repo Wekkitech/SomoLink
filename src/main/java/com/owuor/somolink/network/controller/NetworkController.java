@@ -1,12 +1,12 @@
 package com.owuor.somolink.network.controller;
 
 import com.owuor.somolink.network.config.RouterOSClient;
+import com.owuor.somolink.network.dto.BridgeConfigurationResponseDto;
 import com.owuor.somolink.network.dto.ConfigureBridgeRequest;
-import com.owuor.somolink.network.dto.ConfigurePortRequest;
-import com.owuor.somolink.network.service.PortConfigurationService;
+import com.owuor.somolink.network.dto.PortConfigurationResponseDto;
+import com.owuor.somolink.network.service.BridgeConfigurationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import jakarta.validation.Valid;
 
 import java.util.List;
 
@@ -14,11 +14,11 @@ import java.util.List;
 @RequestMapping("/api/network")
 public class NetworkController {
 
-    private final PortConfigurationService portService;
+    private final BridgeConfigurationService bridgeConfigurationService;
     private final RouterOSClient routerOSClient;
 
-    public NetworkController(PortConfigurationService portService,  RouterOSClient routerOSClient) {
-        this.portService = portService;
+    public NetworkController(BridgeConfigurationService bridgeConfigurationService, RouterOSClient routerOSClient) {
+        this.bridgeConfigurationService = bridgeConfigurationService;
         this.routerOSClient = routerOSClient;
     }
 
@@ -40,14 +40,19 @@ public class NetworkController {
     @PostMapping("/configure/bridge/{schoolId}")
     public ResponseEntity<?> configureBridge(@RequestBody ConfigureBridgeRequest request, @PathVariable Long schoolId) throws Exception {
 
-        portService.configureBridge(request, schoolId);
+        bridgeConfigurationService.configureBridge(request, schoolId);
         return ResponseEntity.ok("Bridge configured successfully");
     }
 
 
     @GetMapping("/interfaces")
     public ResponseEntity<List<String>> getInterfaces() throws Exception {
-        return ResponseEntity.ok(portService.listInterfaces());
+        return ResponseEntity.ok(bridgeConfigurationService.listInterfaces());
+    }
+
+    @GetMapping("/port/configurations")
+    public ResponseEntity<List<BridgeConfigurationResponseDto>> getBridgeConfigurations() throws Exception {
+        return ResponseEntity.ok(bridgeConfigurationService.bridgeConfigurations());
     }
 
 

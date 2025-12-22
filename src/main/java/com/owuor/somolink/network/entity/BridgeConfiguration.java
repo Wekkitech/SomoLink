@@ -36,4 +36,7 @@ public class BridgeConfiguration {
     @OneToOne
     @JoinColumn(name = "school_id")
     private School school;
+
+    @OneToOne(mappedBy = "bridgeConfiguration", fetch = FetchType.LAZY)
+    private ServerProfile serverProfile;
 }

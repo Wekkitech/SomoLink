@@ -1,5 +1,6 @@
 package com.owuor.somolink.network.dto;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 
@@ -7,7 +8,7 @@ import java.util.List;
 
 @Data
 @RequiredArgsConstructor
-
+@AllArgsConstructor
 public class BridgeConfigurationResponseDto {
     private Long id;
     private String portName;

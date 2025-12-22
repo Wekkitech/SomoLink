@@ -1,6 +1,7 @@
 package com.owuor.somolink.network.service;
 
 import com.owuor.somolink.network.config.RouterOSClient;
+import com.owuor.somolink.network.dto.ServerProfileResponseDto;
 import com.owuor.somolink.network.dto.UserProfileRequest;
 import com.owuor.somolink.network.dto.HotspotSetupRequest;
 import com.owuor.somolink.network.entity.*;
@@ -89,9 +90,9 @@ public class HotspotService {
         System.out.println("[DEBUG] Starting hotspot server profile creation...");
 
         // 1. Load port configuration
-        PortConfiguration port = portConfigurationRepository.findById(portId)
+        BridgeConfiguration port = bridgeConfigurationRepository.findById(portId)
                 .orElseThrow(() -> new RuntimeException("Port configuration not found for id: " + portId));
-        System.out.println("[DEBUG] Port loaded: " + port);
+        System.out.println("[DEBUG] Port loaded: " + port.getId());
 
         // 2. Strip CIDR to get the gateway IP
         String hotspotAddress = port.getCidr().split("/")[0];
@@ -110,7 +111,7 @@ public class HotspotService {
         serverProfile.setDnsName(dnsName);
         serverProfile.setConfigured(true);
         serverProfile.setCreatedAt(LocalDateTime.now());
-
+        serverProfile.setBridgeConfiguration(port);
 
         profileRepository.save(serverProfile);
 
@@ -196,5 +197,26 @@ public class HotspotService {
         hotspot.setConfiguredAt(LocalDateTime.now());
 
         hotspotRepository.save(hotspot);
+    }
+
+
+    public List<ServerProfileResponseDto> getAllServerProfiles() {
+        return profileRepository.findAll()
+                .stream()
+                .map(this::toDto)
+                .toList();
+    }
+
+    private ServerProfileResponseDto toDto(ServerProfile profile) {
+        return new ServerProfileResponseDto(
+                profile.getId(),
+                profile.getProfileName(),
+                profile.getDnsName(),
+                profile.getHotspotAddress(),
+                profile.isConfigured(),
+                profile.getCreatedAt(),
+                profile.getBridgeConfiguration().getId(),
+                profile.getBridgeConfiguration().getBridgeName()
+        );
     }
 }

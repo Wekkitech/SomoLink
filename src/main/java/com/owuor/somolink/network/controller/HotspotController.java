@@ -1,8 +1,6 @@
 package com.owuor.somolink.network.controller;
 
-import com.owuor.somolink.network.dto.HotspotServerProfileRequest;
-import com.owuor.somolink.network.dto.UserProfileRequest;
-import com.owuor.somolink.network.dto.HotspotSetupRequest;
+import com.owuor.somolink.network.dto.*;
 import com.owuor.somolink.network.entity.UserProfile;
 import com.owuor.somolink.network.service.HotspotService;
 import jakarta.validation.Valid;
@@ -80,6 +78,12 @@ public class HotspotController {
             return ResponseEntity.badRequest().body("Failed to setup hotspot: " + ex.getMessage());
         }
     }
+
+    @GetMapping("/server/profiles")
+    public ResponseEntity<List<ServerProfileResponseDto>> getAllServerProfiles() throws Exception {
+        return ResponseEntity.ok(hotspotService.getAllServerProfiles());
+    }
+
 
 
 }

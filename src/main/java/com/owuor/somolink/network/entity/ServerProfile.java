@@ -25,4 +25,14 @@ public class ServerProfile {
     private boolean configured; // true if successfully created on MikroTik
 
     private LocalDateTime createdAt;
+
+    @OneToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "bridge_configuration_id",
+            nullable = false,
+            unique = true
+    )
+    private BridgeConfiguration bridgeConfiguration;
+
+
 }

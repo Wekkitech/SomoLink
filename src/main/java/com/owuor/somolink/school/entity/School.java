@@ -3,6 +3,7 @@ package com.owuor.somolink.school.entity;
 import com.owuor.somolink.auth.entity.User;
 import com.owuor.somolink.network.entity.BridgeConfiguration;
 import com.owuor.somolink.network.entity.PortConfiguration;
+import com.owuor.somolink.network.entity.WlanConfiguration;
 import lombok.Data;
 import jakarta.persistence.*;
 
@@ -30,4 +31,9 @@ public class School {
 
     @OneToOne(mappedBy = "school")
     private BridgeConfiguration bridgeConfiguration;
+
+    @OneToMany(mappedBy = "school", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<WlanConfiguration> wlans;
+
+
 }

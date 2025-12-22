@@ -2,6 +2,7 @@ package com.owuor.somolink.school.service;
 
 
 import com.owuor.somolink.network.dto.BridgeConfigurationResponseDto;
+import com.owuor.somolink.network.dto.OpenWlanResponse;
 import com.owuor.somolink.network.dto.PortConfigurationResponseDto;
 import com.owuor.somolink.network.entity.BridgeConfiguration;
 import com.owuor.somolink.school.dto.CreateSchoolRequest;
@@ -91,6 +92,17 @@ public class SchoolService {
                 return d;
             }).toList();
             dto.setDevices(deviceDtos);
+        }
+        // Devices
+        if (school.getWlans() != null) {
+            List<OpenWlanResponse> openWlanResponses = school.getWlans().stream().map(openLanResponse -> {
+                OpenWlanResponse openWlanResponse = new OpenWlanResponse();
+                openWlanResponse.setWlanInterface(openLanResponse.getWlanInterface());
+                openWlanResponse.setSsidName(openLanResponse.getSsidName());
+
+                return openWlanResponse;
+            }).toList();
+            dto.setOpenWlan(openWlanResponses);
         }
 
         // Users

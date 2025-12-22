@@ -1,6 +1,7 @@
 package com.owuor.somolink.school.dto;
 
 import com.owuor.somolink.network.dto.BridgeConfigurationResponseDto;
+import com.owuor.somolink.network.dto.OpenWlanResponse;
 import com.owuor.somolink.network.entity.BridgeConfiguration;
 import com.owuor.somolink.network.entity.PortConfiguration;
 import com.owuor.somolink.users.dto.SchoolUserResponse;
@@ -21,4 +22,5 @@ public class SchoolResponse {
     private List<DeviceResponse> devices;
     private List<SchoolUserResponse> users;
     private BridgeConfigurationResponseDto bridgeConfiguration;
+    private List<OpenWlanResponse> openWlan;
 }
