@@ -2,6 +2,7 @@ package com.owuor.somolink.school.controller;
 
 import com.owuor.somolink.school.dto.CreateDeviceRequest;
 import com.owuor.somolink.school.dto.CreateSchoolRequest;
+import com.owuor.somolink.school.dto.DeviceResponse;
 import com.owuor.somolink.school.dto.SchoolResponse;
 import com.owuor.somolink.school.entity.School;
 import com.owuor.somolink.school.service.DeviceService;
@@ -42,4 +43,12 @@ public class SchoolController {
     ) {
         return ResponseEntity.ok(deviceService.addDevice(schoolId, request));
     }
+
+    @GetMapping("/devices/{schoolId}")
+    public ResponseEntity<List<DeviceResponse>> getSchoolDevices(@PathVariable Long schoolId) {
+        return ResponseEntity.ok().body(schoolService.getSchoolDevices(schoolId));
+    }
+
+
+
 }

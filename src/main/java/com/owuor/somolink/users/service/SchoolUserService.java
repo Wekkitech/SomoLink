@@ -11,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class SchoolUserService {
@@ -52,4 +54,24 @@ public class SchoolUserService {
                 saved.getSchool().getId()
         );
     }
+
+    public List<SchoolUserResponse> getUsersInSchool(Long schoolId) {
+
+        School school = schoolRepository.findById(schoolId)
+                .orElseThrow(() -> new RuntimeException("School not found"));
+
+        return school.getUsers()
+                .stream()
+                .map(user -> new SchoolUserResponse(
+                        user.getId(),
+                        user.getUsername(),
+                        user.getFirstName(),
+                        user.getLastName(),
+                        user.getEmail(),
+                        user.getRole(),
+                        school.getId()
+                ))
+                .toList();
+    }
+
 }

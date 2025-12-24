@@ -5,7 +5,6 @@ import com.owuor.somolink.network.dto.BridgeConfigurationResponseDto;
 import com.owuor.somolink.network.dto.ConfigureBridgeRequest;
 import com.owuor.somolink.network.entity.BridgeConfiguration;
 import com.owuor.somolink.network.repository.BridgeConfigurationRepository;
-import com.owuor.somolink.network.repository.PortConfigurationRepository;
 import com.owuor.somolink.network.utils.NetworkUtils;
 import com.owuor.somolink.school.entity.School;
 import com.owuor.somolink.school.repository.SchoolRepository;
@@ -21,7 +20,7 @@ public class BridgeConfigurationService {
     private final SchoolRepository schoolRepository;
     private final BridgeConfigurationRepository bridgeConfigurationRepository;
 
-    public BridgeConfigurationService(RouterOSClient routerClient, PortConfigurationRepository repository, SchoolRepository schoolRepository, BridgeConfigurationRepository bridgeConfigurationRepository) {
+    public BridgeConfigurationService(RouterOSClient routerClient,  SchoolRepository schoolRepository, BridgeConfigurationRepository bridgeConfigurationRepository) {
         this.routerClient = routerClient;
         this.schoolRepository = schoolRepository;
         this.bridgeConfigurationRepository = bridgeConfigurationRepository;
@@ -177,6 +176,28 @@ public class BridgeConfigurationService {
         ).toList();
 
 
+    }
+
+    public BridgeConfigurationResponseDto getBridgeConfiguration(Long schoolId) {
+
+        BridgeConfiguration bridge = bridgeConfigurationRepository
+                .findBySchoolId(schoolId)
+                .orElseThrow(() ->
+                        new IllegalArgumentException("No bridge configuration found for school id: " + schoolId)
+                );
+
+        return new BridgeConfigurationResponseDto(
+                bridge.getId(),
+                bridge.getBridgeName(),          // portName
+                bridge.getCidr(),
+                bridge.getSubnetMask(),
+                bridge.getNetworkCidr(),
+                bridge.getDhcpPoolRange(),
+                bridge.getDhcpPoolName(),
+                bridge.getDescription(),
+                bridge.isConfigured(),
+                bridge.getInterfaces()
+        );
     }
 
 }

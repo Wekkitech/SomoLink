@@ -9,6 +9,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/users/")
 @RequiredArgsConstructor
@@ -24,4 +26,13 @@ public class SchoolUserController {
     ) {
         return ResponseEntity.ok(schoolUserService.addUserToSchool(schoolId, request));
     }
+
+    @GetMapping("/{schoolId}")
+    public ResponseEntity<List<SchoolUserResponse>> getUsersInSchool(
+            @PathVariable Long schoolId
+    ) {
+        return ResponseEntity.ok(schoolUserService.getUsersInSchool(schoolId));
+    }
+
+
 }

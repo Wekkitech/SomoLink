@@ -57,16 +57,6 @@ public class HotspotController {
         }
     }
 
-    /** Setup hotspot on a given interface */
-    @PostMapping("/setup/{portConfigurationId}")
-    public ResponseEntity<String> setupHotspot(@Valid @RequestBody HotspotSetupRequest request, @PathVariable Long portConfigurationId , String parameter) {
-        try {
-            hotspotService.setupHotspotOnInterface(request,portConfigurationId);
-            return ResponseEntity.ok("Hotspot setup successfully : " + request.getHotspotName());
-        } catch (Exception ex) {
-            return ResponseEntity.badRequest().body("Failed to setup hotspot: " + ex.getMessage());
-        }
-    }
 
     /** Setup hotspot on a given bridge */
     @PostMapping("/setup/{bridgeConfigurationId}")
@@ -77,6 +67,12 @@ public class HotspotController {
         } catch (Exception ex) {
             return ResponseEntity.badRequest().body("Failed to setup hotspot: " + ex.getMessage());
         }
+    }
+
+    @GetMapping("/{bridgeId}")
+    public ResponseEntity<HotspotResponseDto> getHotspot(@PathVariable Long bridgeId) throws Exception {
+            HotspotResponseDto hotspot = hotspotService.getHotspot(bridgeId);
+            return ResponseEntity.ok(hotspot);
     }
 
     @GetMapping("/server/profiles")

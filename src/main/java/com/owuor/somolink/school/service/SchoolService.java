@@ -8,6 +8,7 @@ import com.owuor.somolink.network.entity.BridgeConfiguration;
 import com.owuor.somolink.school.dto.CreateSchoolRequest;
 import com.owuor.somolink.school.dto.DeviceResponse;
 import com.owuor.somolink.school.dto.SchoolResponse;
+import com.owuor.somolink.school.entity.Device;
 import com.owuor.somolink.school.entity.School;
 import com.owuor.somolink.school.repository.SchoolRepository;
 import com.owuor.somolink.users.dto.SchoolUserResponse;
@@ -51,6 +52,7 @@ public class SchoolService {
         School school = schoolRepository.findById(schoolId)
                 .orElseThrow(() -> new IllegalArgumentException("School not found with id: " + schoolId));
 
+
         return mapToDto(school);
 
     }
@@ -62,67 +64,30 @@ public class SchoolService {
         dto.setCode(school.getCode());
         dto.setLocation(school.getLocation());
         dto.setActive(school.isActive());
-
-        // Bridge Configuration
-        if (school.getBridgeConfiguration() != null) {
-            BridgeConfigurationResponseDto bridgeConfigurationResponseDto = new BridgeConfigurationResponseDto();
-            bridgeConfigurationResponseDto.setId(school.getBridgeConfiguration().getId());
-            bridgeConfigurationResponseDto.setConfigured(school.getBridgeConfiguration().isConfigured());
-            bridgeConfigurationResponseDto.setCidr(school.getBridgeConfiguration().getCidr());
-            bridgeConfigurationResponseDto.setSubnetMask(school.getBridgeConfiguration().getSubnetMask());
-            bridgeConfigurationResponseDto.setPortName(school.getBridgeConfiguration().getBridgeName());
-            bridgeConfigurationResponseDto.setNetworkCidr(school.getBridgeConfiguration().getNetworkCidr());
-            bridgeConfigurationResponseDto.setDhcpPoolRange(school.getBridgeConfiguration().getDhcpPoolRange());
-            bridgeConfigurationResponseDto.setDhcpPoolName(school.getBridgeConfiguration().getDhcpPoolName());
-            bridgeConfigurationResponseDto.setDescription(school.getBridgeConfiguration().getDescription());
-            bridgeConfigurationResponseDto.setInterfaces(school.getBridgeConfiguration().getInterfaces());
-            dto.setBridgeConfiguration(bridgeConfigurationResponseDto);
-
-        }
-
-        // Devices
-        if (school.getDevices() != null) {
-            List<DeviceResponse> deviceDtos = school.getDevices().stream().map(device -> {
-                DeviceResponse d = new DeviceResponse();
-                d.setId(device.getId());
-                d.setMacAddress(device.getMacAddress());
-                d.setSchoolName(school.getName());
-                d.setDeviceName(device.getDeviceName());
-
-                return d;
-            }).toList();
-            dto.setDevices(deviceDtos);
-        }
-        // Devices
-        if (school.getWlans() != null) {
-            List<OpenWlanResponse> openWlanResponses = school.getWlans().stream().map(openLanResponse -> {
-                OpenWlanResponse openWlanResponse = new OpenWlanResponse();
-                openWlanResponse.setWlanInterface(openLanResponse.getWlanInterface());
-                openWlanResponse.setSsidName(openLanResponse.getSsidName());
-
-                return openWlanResponse;
-            }).toList();
-            dto.setOpenWlan(openWlanResponses);
-        }
-
-        // Users
-        if (school.getUsers() != null) {
-            List<SchoolUserResponse> userDtos = school.getUsers().stream().map(user -> {
-                SchoolUserResponse schoolUser = new SchoolUserResponse();
-                schoolUser.setId(user.getId());
-                schoolUser.setUsername(user.getUsername());
-                schoolUser.setEmail(user.getEmail());
-                schoolUser.setFirstName(user.getFirstName());
-                schoolUser.setLastName(user.getLastName());
-                schoolUser.setSchoolId(school.getId());
-                schoolUser.setRole(user.getRole());
-                return schoolUser;
-            }).toList();
-            dto.setUsers(userDtos);
-        }
+        dto.setBridgeId(school.getBridgeConfiguration().getId());
 
         return dto;
     }
 
 
+    public List<DeviceResponse> getSchoolDevices(Long schoolId) {
+
+        School school= schoolRepository.findById(schoolId).orElseThrow(
+                () -> new IllegalArgumentException("School not found with id: " + schoolId)
+        );
+                List<Device> devices = school.getDevices();
+                return  devices.stream()
+                        .map(device-> {
+                            DeviceResponse deviceResponse = new DeviceResponse();
+                            deviceResponse.setId(device.getId());
+                            deviceResponse.setMacAddress(device.getMacAddress());
+                            deviceResponse.setDeviceName(device.getDeviceName());
+                            deviceResponse.setSchoolName(school.getName());
+                            return deviceResponse;
+
+                        }).toList();
+
+
+
+    }
 }

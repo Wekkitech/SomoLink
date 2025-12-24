@@ -1,6 +1,7 @@
 package com.owuor.somolink.network.service;
 
 import com.owuor.somolink.network.config.RouterOSClient;
+import com.owuor.somolink.network.dto.HotspotResponseDto;
 import com.owuor.somolink.network.dto.ServerProfileResponseDto;
 import com.owuor.somolink.network.dto.UserProfileRequest;
 import com.owuor.somolink.network.dto.HotspotSetupRequest;
@@ -20,19 +21,16 @@ public class HotspotService {
     private final ServerProfileRepository profileRepository;
     private final UserProfileRepository userProfileRepository;
     private final HotspotRepository hotspotRepository;
-    private final PortConfigurationRepository portConfigurationRepository;
     private final BridgeConfigurationRepository bridgeConfigurationRepository;
 
     public HotspotService(RouterOSClient routerClient,
                           ServerProfileRepository profileRepository,
                           HotspotRepository hotspotRepository,
-                          PortConfigurationRepository portConfigurationRepository,
                           UserProfileRepository userProfileRepository,
                           BridgeConfigurationRepository bridgeConfigurationRepository) {
         this.routerClient = routerClient;
         this.profileRepository = profileRepository;
         this.hotspotRepository = hotspotRepository;
-        this.portConfigurationRepository = portConfigurationRepository;
         this.userProfileRepository = userProfileRepository;
         this.bridgeConfigurationRepository = bridgeConfigurationRepository;
     }
@@ -118,48 +116,15 @@ public class HotspotService {
         System.out.println("[DEBUG] Hotspot server profile saved in DB: " + profileName);
     }
 
-    /**
-     * Setup hotspot on interface AND save in DB
-     */
-    public void setupHotspotOnInterface(HotspotSetupRequest request, Long portConfigurationId) throws Exception {
-        PortConfiguration portConfiguration = portConfigurationRepository.findById(portConfigurationId).orElseThrow(
-                () -> new IllegalArgumentException("PortConfiguration not found: " + portConfigurationId)
-        );
-
-        // 🔥 Resolve or auto-create profile
-        String gatewayIp = portConfiguration.getCidr().split("/")[0];
-
-        // 1. Try reuse existing profile
-        ServerProfile serverProfile =
-                profileRepository.findByHotspotAddress(gatewayIp).orElseThrow(
-                        () ->
-                                new IllegalArgumentException("Server profile not found")
-                );
-
-        // 2. Apply to MikroTik
-        routerClient.setupHotspot(
-                portConfiguration.getPortName(),
-                request.getHotspotName(),
-                serverProfile.getProfileName()
-        );
-
-        // 3. Save to DB
-        Hotspot hotspot = new Hotspot();
-        hotspot.setHotspotName(request.getHotspotName());
-        hotspot.setInterfaceName(portConfiguration.getPortName());
-        hotspot.setProfile(serverProfile);
-        hotspot.setConfigured(true);
-        hotspot.setCreatedAt(LocalDateTime.now());
-        hotspot.setConfiguredAt(LocalDateTime.now());
-        hotspot.setPortConfiguration(portConfiguration);
-
-        hotspotRepository.save(hotspot);
-    }
 
     public void setupHotspotOnBridgeInterface(
             HotspotSetupRequest request,
             Long bridgeConfigurationId
     ) throws Exception {
+
+        System.out.println("[DEBUG] Starting hotspot setup");
+        System.out.println("[DEBUG] bridgeConfigurationId = " + bridgeConfigurationId);
+        System.out.println("[DEBUG] requested hotspotName = " + request.getHotspotName());
 
         BridgeConfiguration bridge = bridgeConfigurationRepository
                 .findById(bridgeConfigurationId)
@@ -167,28 +132,29 @@ public class HotspotService {
                         new IllegalArgumentException("Bridge not found")
                 );
 
-        // 🔥 Resolve or auto-create profile
-        String gatewayIp = bridge.getCidr().split("/")[0];
+        System.out.println("[DEBUG] Bridge found: " + bridge.getBridgeName());
 
-        // 1. Try reuse existing profile
-        ServerProfile serverProfile =
-                profileRepository.findByHotspotAddress(gatewayIp).orElseThrow(
-                        () ->
-                                new IllegalArgumentException("Bridge not found")
-                );
+        ServerProfile serverProfile = bridge.getServerProfile();
+        if (serverProfile == null) {
+            throw new IllegalStateException("Bridge has no server profile attached");
+        }
 
+        System.out.println("[DEBUG] Using server profile: " + serverProfile.getProfileName());
 
-        // Apply hotspot on MikroTik
-        routerClient.setupHotspot(
-                bridge.getBridgeName(),
-                request.getHotspotName(),
-                serverProfile.getProfileName()
-        );
+        try {
+            routerClient.setupHotspot(
+                    bridge.getBridgeName(),
+                    request.getHotspotName(),
+                    serverProfile.getProfileName()
+            );
+        } catch (Exception ex) {
+            System.err.println("[ERROR] MikroTik hotspot setup failed");
+            System.err.println("[ERROR] Reason: " + ex.getMessage());
+            throw new RuntimeException("Failed to setup hotspot: " + ex.getMessage(), ex);
+        }
 
         Hotspot hotspot = new Hotspot();
-        hotspot.setHotspotName(
-                request.getHotspotName()
-        );
+        hotspot.setHotspotName(request.getHotspotName());
         hotspot.setInterfaceName(bridge.getBridgeName());
         hotspot.setProfile(serverProfile);
         hotspot.setBridgeConfiguration(bridge);
@@ -197,7 +163,10 @@ public class HotspotService {
         hotspot.setConfiguredAt(LocalDateTime.now());
 
         hotspotRepository.save(hotspot);
+
+        System.out.println("[DEBUG] Hotspot saved in DB successfully");
     }
+
 
 
     public List<ServerProfileResponseDto> getAllServerProfiles() {
@@ -217,6 +186,31 @@ public class HotspotService {
                 profile.getCreatedAt(),
                 profile.getBridgeConfiguration().getId(),
                 profile.getBridgeConfiguration().getBridgeName()
+        );
+    }
+
+
+    public HotspotResponseDto getHotspot(Long bridgeId) {
+
+        Hotspot hotspot = hotspotRepository.findByBridgeConfiguration_Id(bridgeId).orElseThrow(
+                () -> new RuntimeException("Hotspot not found")
+        );
+        System.out.println("[DEBUG] Hotspot found: " + hotspot.getHotspotName());
+        return toDto(hotspot);
+    }
+
+    private HotspotResponseDto toDto(Hotspot hotspot) {
+        return new HotspotResponseDto(
+                hotspot.getId(),
+                hotspot.getHotspotName(),
+                hotspot.getInterfaceName(),
+                hotspot.getProfile().getId(),
+                hotspot.getProfile().getProfileName(),
+                hotspot.getBridgeConfiguration().getId(),
+                hotspot.getBridgeConfiguration().getBridgeName(),
+                hotspot.isConfigured(),
+                hotspot.getCreatedAt(),
+                hotspot.getConfiguredAt()
         );
     }
 }

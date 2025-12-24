@@ -45,6 +45,11 @@ public class NetworkController {
     }
 
 
+    @GetMapping("/bridge/configuration/{schoolId}")
+    public ResponseEntity<BridgeConfigurationResponseDto> getBridgeConfiguration( @PathVariable Long schoolId) throws Exception {
+        return ResponseEntity.ok( bridgeConfigurationService.getBridgeConfiguration(schoolId));
+    }
+
     @GetMapping("/interfaces")
     public ResponseEntity<List<String>> getInterfaces() throws Exception {
         return ResponseEntity.ok(bridgeConfigurationService.listInterfaces());

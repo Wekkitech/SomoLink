@@ -2,7 +2,6 @@ package com.owuor.somolink.school.entity;
 
 import com.owuor.somolink.auth.entity.User;
 import com.owuor.somolink.network.entity.BridgeConfiguration;
-import com.owuor.somolink.network.entity.PortConfiguration;
 import com.owuor.somolink.network.entity.WlanConfiguration;
 import lombok.Data;
 import jakarta.persistence.*;

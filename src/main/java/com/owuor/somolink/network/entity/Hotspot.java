@@ -24,11 +24,6 @@ public class Hotspot {
     @JoinColumn(name = "profile_id", nullable = false)
     private ServerProfile profile;
 
-    // Link to the port configuration
-    @OneToOne
-    @JoinColumn(name = "port_configuration_id")
-    private PortConfiguration portConfiguration;
-
     // Link to the bridge configuration
     @OneToOne
     @JoinColumn(name = "bridge_configuration_id")

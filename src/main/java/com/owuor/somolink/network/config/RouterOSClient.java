@@ -234,23 +234,53 @@ public class RouterOSClient {
      * Creates and enables a hotspot server on an interface or bridge.
      * Hotspots are CREATED DISABLED by RouterOS.
      */
-    public void setupHotspot(String interfaceName, String hotspotName, String profileName) throws Exception {
+    public void setupHotspot(
+            String interfaceName,
+            String hotspotName,
+            String profileName
+    ) throws Exception {
+
         try (ApiConnection con = connect()) {
 
-            // Ensure interface or bridge is enabled
-            con.execute("/interface/set [find name=" + interfaceName + "] disabled=no");
+            String hsName = (hotspotName != null && !hotspotName.isBlank())
+                    ? hotspotName
+                    : interfaceName;
 
-            String hsName = hotspotName != null ? hotspotName : interfaceName;
+            System.out.println("[DEBUG] ===== HOTSPOT SETUP START =====");
+            System.out.println("[DEBUG] Interface  : " + interfaceName);
+            System.out.println("[DEBUG] Hotspot    : " + hsName);
+            System.out.println("[DEBUG] Profile    : " + profileName);
 
-            con.execute(String.format(
-                    "/ip/hotspot/add name=%s interface=%s profile=%s address-pool=dhcp_%s",
-                    hsName, interfaceName, profileName, interfaceName
-            ));
+            // 1️⃣ Enable interface (API-safe)
+            String enableInterfaceCmd = String.format(
+                    "/interface/set name=%s disabled=no",
+                    interfaceName
+            );
+            System.out.println("[DEBUG] Executing: " + enableInterfaceCmd);
+            con.execute(enableInterfaceCmd);
 
-            // REQUIRED: Enable hotspot
-            con.execute("/ip/hotspot/set [find name=" + hsName + "] disabled=no");
+            // 2️⃣ Add hotspot
+            String addHotspotCmd = String.format(
+                    "/ip/hotspot/add name=%s interface=%s profile=%s",
+                    hsName,
+                    interfaceName,
+                    profileName
+            );
+            System.out.println("[DEBUG] Executing: " + addHotspotCmd);
+            con.execute(addHotspotCmd);
+
+            // 3️⃣ Enable hotspot (NO find)
+            String enableHotspotCmd = String.format(
+                    "/ip/hotspot/set name=%s disabled=no",
+                    hsName
+            );
+            System.out.println("[DEBUG] Executing: " + enableHotspotCmd);
+            con.execute(enableHotspotCmd);
+
+            System.out.println("[DEBUG] ===== HOTSPOT SETUP DONE =====");
         }
     }
+
 
     /**
      * Creates a hotspot server profile (HTML login, auth methods, DNS).
@@ -431,6 +461,26 @@ public class RouterOSClient {
             System.out.println("[HOTSPOT] School hotspot user created successfully");
         }
     }
+
+    /**
+     * Get current RX/TX traffic (bits per second) for a given interface.
+     */
+    public Map<String, Long> getInterfaceTraffic(String interfaceName) throws Exception {
+        try (ApiConnection con = connect()) {
+            List<Map<String, String>> res = con.execute(
+                    String.format("/interface/monitor-traffic %s once", interfaceName)
+            );
+
+            if (res.isEmpty()) return Collections.emptyMap();
+
+            Map<String, String> data = res.get(0);
+            Map<String, Long> traffic = new HashMap<>();
+            traffic.put("rxBps", Long.parseLong(data.getOrDefault("rx-bits-per-second", "0")));
+            traffic.put("txBps", Long.parseLong(data.getOrDefault("tx-bits-per-second", "0")));
+            return traffic;
+        }
+    }
+
 
 
 }
