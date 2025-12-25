@@ -463,20 +463,34 @@ public class RouterOSClient {
     }
 
     /**
-     * Get current RX/TX traffic (bits per second) for a given interface.
+     * Get RX/TX traffic counters for an interface (bytes).
      */
     public Map<String, Long> getInterfaceTraffic(String interfaceName) throws Exception {
         try (ApiConnection con = connect()) {
-            List<Map<String, String>> res = con.execute(
-                    String.format("/interface/monitor-traffic %s once", interfaceName)
+            // We use monitor-traffic with 'once' to get the CURRENT rate
+            String cmd = String.format(
+                    "/interface/monitor-traffic interface=\"%s\" once",
+                    interfaceName
             );
 
-            if (res.isEmpty()) return Collections.emptyMap();
+            List<Map<String, String>> res = con.execute(cmd);
+
+            if (res.isEmpty()) {
+                throw new RuntimeException("Interface not found: " + interfaceName);
+            }
 
             Map<String, String> data = res.get(0);
+
+            // MikroTik returns these as 'rx-bits-per-second' and 'tx-bits-per-second'
+            // We convert them to Long
+            long rxBps = Long.parseLong(data.getOrDefault("rx-bits-per-second", "0"));
+            long txBps = Long.parseLong(data.getOrDefault("tx-bits-per-second", "0"));
+
             Map<String, Long> traffic = new HashMap<>();
-            traffic.put("rxBps", Long.parseLong(data.getOrDefault("rx-bits-per-second", "0")));
-            traffic.put("txBps", Long.parseLong(data.getOrDefault("tx-bits-per-second", "0")));
+            traffic.put("rxBps", rxBps);
+            traffic.put("txBps", txBps);
+            traffic.put("totalBps", rxBps + txBps);
+
             return traffic;
         }
     }

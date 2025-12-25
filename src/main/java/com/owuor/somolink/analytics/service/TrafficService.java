@@ -16,8 +16,10 @@ public class TrafficService {
     public TrafficResponse getInterfaceTraffic(String iface) {
         try {
             Map<String, Long> traffic = routerOSClient.getInterfaceTraffic(iface);
+
             long rx = traffic.getOrDefault("rxBps", 0L);
             long tx = traffic.getOrDefault("txBps", 0L);
+
             return new TrafficResponse(
                     iface,
                     rx,
@@ -25,8 +27,10 @@ public class TrafficService {
                     rx + tx,
                     System.currentTimeMillis()
             );
+
         } catch (Exception e) {
             throw new RuntimeException("Failed to get traffic for " + iface, e);
         }
     }
+
 }

@@ -17,6 +17,7 @@ public class TrafficController {
 
     @GetMapping("/{iface}")
     public TrafficResponse getTraffic(@PathVariable String iface) {
+        System.out.println(iface);
         return trafficService.getInterfaceTraffic(iface);
     }
 }
