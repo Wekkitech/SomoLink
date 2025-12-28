@@ -1,5 +1,6 @@
 package com.owuor.somolink.payment.entity;
 
+import com.owuor.somolink.payment.enums.ProvisioningStatus;
 import com.owuor.somolink.payment.enums.PaymentStatus;
 import jakarta.persistence.*;
 import lombok.Data;
@@ -36,6 +37,8 @@ public class PaymentIntent {
 
     private String merchantRequestId;
 
+    private String statusMessage;
+
     @Enumerated(EnumType.STRING)
     private PaymentStatus status = PaymentStatus.PENDING;
 
@@ -45,4 +48,11 @@ public class PaymentIntent {
     @OneToOne
     @JoinColumn(name = "payment_transaction_id")
     private PaymentTransaction paymentTransaction;
+
+    @Column(name = "callback_received", nullable = true)
+    private boolean callbackReceived = false;
+
+    @Enumerated(EnumType.STRING)
+    private ProvisioningStatus provisioningStatus = ProvisioningStatus.PENDING;
+
 }

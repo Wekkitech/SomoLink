@@ -10,4 +10,6 @@ import java.util.Optional;
 public interface HotspotUserRepository extends JpaRepository<HotspotUser, Long> {
 
     Optional<HotspotUser> findByPaymentTransaction(PaymentTransaction paymentTransaction);
+
+    Optional<HotspotUser> findByPaymentTransaction_Id(Long paymentTransactionId);
 }

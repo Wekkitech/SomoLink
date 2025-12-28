@@ -64,7 +64,7 @@ public class SchoolService {
         dto.setCode(school.getCode());
         dto.setLocation(school.getLocation());
         dto.setActive(school.isActive());
-        dto.setBridgeId(school.getBridgeConfiguration().getId());
+        dto.setBridgeId(school.getBridgeConfiguration()!= null ? school.getBridgeConfiguration().getId():null);
 
         return dto;
     }

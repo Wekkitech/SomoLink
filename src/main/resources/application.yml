@@ -7,8 +7,8 @@ spring:
     name: somolink
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/Somolink
-    username: postgres
+    url: jdbc:postgresql://dpg-d51rv63uibrs739gsfa0-a.oregon-postgres.render.com:5432/Somolink
+    username: postgres1
     password: admin
     driver-class-name: org.postgresql.Driver
 
@@ -32,3 +32,22 @@ mikrotik:
   username: admin
   password: admin
   timeout: 5s
+
+mpesa:
+  daraja:
+    consumer-key: COYVxq9VlC9GfCPfGCx8BPE4FTixdNwjZFyqpkofcG5VcR2n
+    consumer-secret: ey2WBuzZr8WA0HHobH8AEm9db52XEZclGjxECtApvsn23MPBTaXnA0aeXeQfzE8q
+    grant-type: client_credentials
+    oauth-endpoint: https://sandbox.safaricom.co.ke/oauth/v1/generate
+
+    # C2B simulate
+    shortCode: 600000
+    confirmationURL: https://YOUR_NGROK_URL/mobile-money/confirmation
+    validationURL: https://YOUR_NGROK_URL/mobile-money/validation
+    responseType: Completed
+
+    # STK Push
+    stkPassKey: bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919
+    stkPushShortCode: 174379
+    stkPushRequestUrl: https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest
+    stkPushRequestCallbackUrl: https://e3e97311e188.ngrok-free.app/api/validate/callback

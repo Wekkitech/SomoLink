@@ -301,29 +301,33 @@ public class RouterOSClient {
         }
     }
 
-    /**
-     * Creates a hotspot user with username, password, and profile.
-     */
-    public void createHotspotUser(
-            String username,
-            String password,
-            String profileName,
-            String dnsName
-    ) throws Exception {
+
+    public void createHotspotUser(String username, String password, String profileName) throws Exception {
+        String serverName = "huggin-hight-hs";
 
         try (ApiConnection con = connect()) {
+            log.info("Creating hotspot user '{}'...", username);
 
-            con.execute(String.format(
-                    "/ip/hotspot/user/add name=%s password=%s profile=%s",
-                    username, password, profileName
-            ));
+            // Format the entire command into ONE string.
+            // We wrap values in \" to handle spaces in profile names or passwords.
+            String command = String.format(
+                    "/ip/hotspot/user/add name=\"%s\" password=\"%s\" profile=\"%s\" server=\"%s\"",
+                    username,
+                    (password == null ? "" : password),
+                    (profileName == null ? "default" : profileName),
+                    serverName
+            );
+
+            // This matches the execute(String) signature exactly
+            con.execute(command);
+
+            log.info("User {} created successfully", username);
+        } catch (Exception e) {
+            log.error("Failed to create user: {}", e.getMessage());
+            throw e;
         }
     }
 
-    /**
-     * Creates a bridge and attaches interfaces.
-     * Ensures both bridge and interfaces are enabled.
-     */
     public void createBridge(String bridgeName, List<String> interfaces) throws Exception {
         try (ApiConnection con = connect()) {
 

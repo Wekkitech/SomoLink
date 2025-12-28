@@ -20,4 +20,6 @@ public class TrafficController {
         System.out.println(iface);
         return trafficService.getInterfaceTraffic(iface);
     }
+
+
 }

@@ -1,5 +1,6 @@
 package com.owuor.somolink.payment.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.owuor.somolink.payment.enums.PaymentStatus;
 import jakarta.persistence.*;
 import lombok.Data;
@@ -31,7 +32,9 @@ public class PaymentTransaction {
     private PaymentStatus status;
 
     @Lob
+    @Basic(fetch = FetchType.LAZY)
     @Column(columnDefinition = "TEXT")
+    @JsonIgnore
     private String rawCallback;
 
     private LocalDateTime paidAt;
