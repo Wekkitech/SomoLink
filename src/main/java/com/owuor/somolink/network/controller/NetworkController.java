@@ -37,6 +37,7 @@ public class NetworkController {
     }
 
 
+
     @PostMapping("/configure/bridge/{schoolId}")
     public ResponseEntity<?> configureBridge(@RequestBody ConfigureBridgeRequest request, @PathVariable Long schoolId) throws Exception {
 

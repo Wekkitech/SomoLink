@@ -1,8 +1,10 @@
 package com.owuor.somolink.network.config;
 
+import com.owuor.somolink.network.dto.RouterHealth;
 import lombok.extern.slf4j.Slf4j;
 import me.legrange.mikrotik.ApiConnection;
 
+import javax.net.SocketFactory;
 import java.util.*;
 
 /**
@@ -33,7 +35,9 @@ public class RouterOSClient {
      * Establishes and returns a logged-in RouterOS API connection.
      */
     private ApiConnection connect() throws Exception {
-        ApiConnection con = ApiConnection.connect(host);
+        int port = 8292;  // forwarded port
+        int timeout = 60000; // 60 seconds
+        ApiConnection con = ApiConnection.connect(SocketFactory.getDefault(), host, port, timeout);
         con.login(username, password);
         return con;
     }
@@ -43,15 +47,38 @@ public class RouterOSClient {
      */
     public boolean testConnection() {
         try (ApiConnection con = connect()) {
-            String identity = con.execute("/system/identity/print")
-                    .get(0).get("name");
+            var serv = "winbox";
+//            con.execute("/ip/service/set numbers=winbox port=8291");
+                        con.execute(String.format("/ip/service/enable numbers=%s",serv));
+            String identity = con.execute("/ip/service/print").toString();
+
             System.out.println("Router identity: " + identity);
+
             return true;
         } catch (Exception e) {
             log.info("Router error: {}", e.getMessage());
             return false;
         }
     }
+//    public boolean testConnection() {
+//        try (ApiConnection con = connect()) {
+
+//    var serv = "winbox";
+//
+//            con.execute(String.format("/ip/service/disable numbers=%s",serv));
+
+//    String identity = con.execute("/ip/service/print").toString();
+//
+//            System.out.println("Router identity: " + identity);
+//            String identity = con.execute("/system/identity/print")
+//                    .get(0).get("name");
+//            System.out.println("Router identity: " + identity);
+//            return true;
+//        } catch (Exception e) {
+//            log.info("Router error: {}", e.getMessage());
+//            return false;
+//        }
+//    }
 
     /**
      * Assigns an IP address to an interface.
@@ -496,6 +523,32 @@ public class RouterOSClient {
             traffic.put("totalBps", rxBps + txBps);
 
             return traffic;
+        }
+    }
+
+    /**
+     * Fetches basic health stats for the router.
+     * Used for dashboard (CPU, RAM, Online).
+     */
+    public RouterHealth getRouterHealth() {
+        try (ApiConnection con = connect()) {
+
+            List<Map<String, String>> res =
+                    con.execute("/system/resource/print");
+
+            Map<String, String> data = res.get(0);
+
+            int cpuUsage = Integer.parseInt(data.get("cpu-load"));
+
+            long totalMemory = Long.parseLong(data.get("total-memory"));
+            long freeMemory = Long.parseLong(data.get("free-memory"));
+            int ramUsage = (int) ((totalMemory - freeMemory) * 100 / totalMemory);
+
+            return new RouterHealth(true, cpuUsage, ramUsage);
+
+        } catch (Exception e) {
+            log.warn("Router health check failed: {}", e.getMessage());
+            return new RouterHealth(false, 0, 0);
         }
     }
 
