@@ -35,7 +35,7 @@ jobs:
           ls -la
 
       # Step 5: Run unit tests
-      - name: Run unit tests
+      - name: Run the unit tests
         run: ./mvnw test -B
 
       # Step 6: Build Spring Boot JAR
