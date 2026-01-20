@@ -7,9 +7,9 @@ spring:
     name: somolink
 
   datasource:
-    url: jdbc:postgresql://dpg-d51rv63uibrs739gsfa0-a.oregon-postgres.render.com:5432/Somolink
-    username: postgres1
-    password: admin
+    url: jdbc:postgresql://somolink-dev-db.postgres.database.azure.com:5432/Somolink
+    username: somoAdmin
+    password: 1080751@Q
     driver-class-name: org.postgresql.Driver
 
   jpa:

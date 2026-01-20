@@ -1,0 +1,48 @@
+name: Build & Deploy Backend
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout backend code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2: Set up Java
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: 17
+
+      # Step 3: Build Spring Boot JAR
+      - name: Build Spring Boot app
+        run: ./mvnw clean package -DskipTests
+
+      # Step 4: Copy build to VM
+      - name: Copy JAR to VM
+        uses: appleboy/scp-action@v0.1.5
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          port: ${{ secrets.VM_SSH_PORT }}
+          source: target/somolink-*.jar
+          target: ${{ secrets.VM_BACKEND_PATH }}
+
+      # Step 5: Run deploy script on VM
+      - name: Run deploy script
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          port: ${{ secrets.VM_SSH_PORT }}
+          script: |
+            bash ${{ secrets.VM_DEPLOY_SCRIPT }}
