@@ -26,15 +26,55 @@ jobs:
           distribution: 'temurin'
           java-version: 17
 
-      # Step 4: Run unit tests (optional)
+      # Step 4: Debug – show build environment
+      - name: Debug build environment
+        run: |
+          echo "JAVA_HOME=$JAVA_HOME"
+          java -version
+          pwd
+          ls -la
+
+      # Step 5: Run unit tests
       - name: Run unit tests
         run: ./mvnw test -B
 
-      # Step 5: Build Spring Boot JAR
+      # Step 6: Build Spring Boot JAR
       - name: Build backend app
         run: ./mvnw clean package -B -DskipTests
 
-      # Step 6: Copy JAR to VM
+      # Step 7: Debug – confirm JAR exists
+      - name: Debug build output
+        run: |
+          echo "Listing target directory:"
+          ls -lh target/
+          echo "Matching JARs:"
+          ls target/somolink-*.jar || echo "NO JAR FOUND"
+
+      # Step 8: Debug – check secrets presence (NOT values)
+      - name: Debug secrets presence
+        run: |
+          echo "VM_HOST is set: ${{ secrets.VM_HOST != '' }}"
+          echo "VM_USER is set: ${{ secrets.VM_USER != '' }}"
+          echo "VM_SSH_PORT is set: ${{ secrets.VM_SSH_PORT != '' }}"
+          echo "VM_BACKEND_PATH is set: ${{ secrets.VM_BACKEND_PATH != '' }}"
+          echo "VM_DEPLOY_SCRIPT is set: ${{ secrets.VM_DEPLOY_SCRIPT != '' }}"
+
+      # Step 9: Debug – test SSH connectivity
+      - name: Test SSH connection
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          port: ${{ secrets.VM_SSH_PORT }}
+          script: |
+            echo "Connected successfully"
+            echo "Remote user: $(whoami)"
+            echo "Remote host: $(hostname)"
+            pwd
+            ls -la
+
+      # Step 10: Copy JAR to VM
       - name: Copy backend JAR to VM
         uses: appleboy/scp-action@v0.1.5
         with:
@@ -45,7 +85,7 @@ jobs:
           source: target/somolink-*.jar
           target: ${{ secrets.VM_BACKEND_PATH }}
 
-      # Step 7: Run deploy script on VM
+      # Step 11: Run deploy script on VM
       - name: Run deploy script on VM
         uses: appleboy/ssh-action@v0.1.7
         with:
@@ -54,4 +94,6 @@ jobs:
           key: ${{ secrets.VM_SSH_KEY }}
           port: ${{ secrets.VM_SSH_PORT }}
           script: |
+            echo "Running deploy script at:"
+            echo "${{ secrets.VM_DEPLOY_SCRIPT }}"
             bash ${{ secrets.VM_DEPLOY_SCRIPT }}
