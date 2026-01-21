@@ -1,5 +1,6 @@
 package com.owuor.somolink.network.controller;
 
+import com.owuor.somolink.dev.RouterOSTestClient;
 import com.owuor.somolink.network.config.RouterOSClient;
 import com.owuor.somolink.network.dto.BridgeConfigurationResponseDto;
 import com.owuor.somolink.network.dto.ConfigureBridgeRequest;
@@ -9,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/network")
@@ -36,15 +38,12 @@ public class NetworkController {
         }
     }
 
-
-
     @PostMapping("/configure/bridge/{schoolId}")
     public ResponseEntity<?> configureBridge(@RequestBody ConfigureBridgeRequest request, @PathVariable Long schoolId) throws Exception {
 
         bridgeConfigurationService.configureBridge(request, schoolId);
         return ResponseEntity.ok("Bridge configured successfully");
     }
-
 
     @GetMapping("/bridge/configuration/{schoolId}")
     public ResponseEntity<BridgeConfigurationResponseDto> getBridgeConfiguration( @PathVariable Long schoolId) throws Exception {
@@ -61,6 +60,21 @@ public class NetworkController {
         return ResponseEntity.ok(bridgeConfigurationService.bridgeConfigurations());
     }
 
+    @GetMapping("/router/interfaces")
+    public List<Map<String, String>> getAllInterfaces() {
+        return RouterOSTestClient.listAllInterfaces();
+    }
+    @PostMapping("/interface/{name}/enable")
+    public ResponseEntity<String> enableInterface(@PathVariable String name) {
+        RouterOSTestClient.enableInterface(name);
+        return ResponseEntity.ok("Enabled " + name);
+    }
+
+    @PostMapping("/interface/{name}/disable")
+    public ResponseEntity<String> disableInterface(@PathVariable String name) {
+        RouterOSTestClient.disableInterface(name);
+        return ResponseEntity.ok("Disabled " + name);
+    }
 
 
 }
